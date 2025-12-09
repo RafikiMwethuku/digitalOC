@@ -34,6 +34,8 @@ def load_first_existing(files: List[str]) -> pd.DataFrame:
         if p.exists():
             print(f"Loading data from {f}")
             return pd.read_csv(p, low_memory=False)
+    
+    raise FileNotFoundError(f"No data files found in: {files}")
 
 def add_football_intelligence_features(df: pd.DataFrame) -> pd.DataFrame:
     df2 = df.copy()
