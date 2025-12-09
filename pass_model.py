@@ -10,7 +10,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
 
-DATA_FILES = ["Data/merged_pass_model_data_2020.csv"]
+DATA_FILES = [
+    "Data/merged_pass_model_data_2020.csv",
+    "Data/merged_pass_model_data_2021.csv",
+    "Data/merged_pass_model_data_2022.csv",
+    "Data/merged_pass_model_data_2023.csv",
+    "Data/merged_pass_model_data_2024.csv",
+]
 OUTPUT_DIR = Path("models")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -28,14 +34,23 @@ TEST_SIZE = 0.2
 MIN_SAMPLES_PER_CLASS = 15
 
 
-def load_first_existing(files: List[str]) -> pd.DataFrame:
+def load_all_existing(files: List[str]) -> pd.DataFrame:
+    # Loads and combines all merged pass model data files
+    dataframes = []
     for f in files:
         p = Path(f)
         if p.exists():
             print(f"Loading data from {f}")
-            return pd.read_csv(p, low_memory=False)
-    
-    raise FileNotFoundError(f"No data files found in: {files}")
+            dataframes.append(pd.read_csv(p, low_memory=False))
+
+    if not dataframes:
+        raise FileNotFoundError(
+            f"No data files found. Looked for: {', '.join(files)}"
+        )
+
+    df = pd.concat(dataframes, ignore_index=True)
+    print(f"Combined rows from {len(dataframes)} file(s): {len(df):,} total plays")
+    return df
 
 def add_football_intelligence_features(df: pd.DataFrame) -> pd.DataFrame:
     df2 = df.copy()
@@ -283,7 +298,7 @@ def print_summary(trained_models: Dict[str, Dict[str, Any]]):
 def train_pass_models():
     start = time.time()
     print("=== Pass Model ===")
-    df = load_first_existing(DATA_FILES)
+    df = load_all_existing(DATA_FILES)
     #filter to pass plays if play_type exists
     if "play_type" in df.columns:
         df = df[df["play_type"] == "pass"].copy()
