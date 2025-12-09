@@ -220,7 +220,14 @@ def train_target_model(X: pd.DataFrame, y: pd.Series, target: str) -> Dict[str, 
     elapsed = time.time() - start
     y_pred = clf.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
-    print(f"Accuracy ({target}): {acc:.3f} | Train time: {elapsed:.1f}s")
+    baseline_acc = majority_class_baseline(y_test)
+    print(
+        f"Accuracy ({target}): {acc:.3f} | "
+        f"Baseline: {baseline_acc:.3f} | "
+        f"Δ: {acc - baseline_acc:+.3f} | "
+        f"Train time: {elapsed:.1f}s"
+    )
+
     #limited classification report for small-class targets
     try:
         labels = np.union1d(y_test.unique(), y_pred)
@@ -308,6 +315,10 @@ def train_pass_models():
     print_summary(trained)
     print(f"\nTotal time: {(time.time() - start)/60:.2f} minutes")
     return trained
+
+def majority_class_baseline(y: pd.Series) -> float:
+    # Accuracy if we always predict the most common class. (such as only predicting WR for position)
+    return (y.value_counts(normalize=True).iloc[0])
 
 def predict_pass_metrics(situation, trained_models):
     ''' 
