@@ -41,7 +41,7 @@ def add_football_intelligence_features(df: pd.DataFrame) -> pd.DataFrame:
     df2 = df.copy()
     #basic safety for missing columns
     def safe_get(col, default=0):
-        return df2[col] if col in df2.columns else pd.Series([default]*len(df2))
+        return df2[col] if col in df2.columns else pd.Series([default] * len(df2), index=df2.index)
 
     df2["yardline_100"] = safe_get("yardline_100", 50)
     df2["goal_to_go"] = safe_get("goal_to_go", 0)
@@ -52,6 +52,14 @@ def add_football_intelligence_features(df: pd.DataFrame) -> pd.DataFrame:
     df2["score_differential"] = safe_get("score_differential", 0)
     df2["shotgun"] = safe_get("shotgun", 0)
     df2["play_type"] = safe_get("play_type", "pass")
+
+    #time and timeouts
+    df2["half_seconds_remaining"] = safe_get("half_seconds_remaining", 1800)
+    df2["game_seconds_remaining"] = safe_get("game_seconds_remaining", 3600)
+    df2["posteam_timeouts_remaining"] = safe_get("posteam_timeouts_remaining", 3)
+    df2["defteam_timeouts_remaining"] = safe_get("defteam_timeouts_remaining", 3)
+    df2["no_huddle"] = safe_get("no_huddle", 0)
+
 
     #Field position
     df2["is_redzone"] = (df2["yardline_100"] <= 20).astype(int)
@@ -76,18 +84,25 @@ def add_football_intelligence_features(df: pd.DataFrame) -> pd.DataFrame:
 
     #Formation flags
     if "offense_formation" in df2.columns:
-        df2["is_empty"] = df2["offense_formation"].str.contains("EMPTY", na=False).astype(int)
-        df2["is_heavy"] = df2["offense_formation"].str.contains("JUMBO|HEAVY", na=False).astype(int)
-        df2["is_shotgun"] = df2["offense_formation"].str.contains("SHOTGUN", na=False).astype(int)
+        df2_string = df2["offense_formation"].astype("string")
+        df2["is_empty"] = df2_string.str.contains("EMPTY", na=False).astype(int)
+        df2["is_heavy"] = df2_string.str.contains("JUMBO|HEAVY", na=False).astype(int)
+        df2["is_shotgun"] = df2_string.str.contains("SHOTGUN", na=False).astype(int)
     else:
+        #fall back to shotgun if it exists
+        df2["is_empty"] = 0
+        df2["is_heavy"] = 0
         if "shotgun" in df2.columns:
             df2["is_shotgun"] = df2["shotgun"].fillna(0).astype(int)
+        else:
+            df2["is_shotgun"] = 0
 
     #Field segments
     if "yardline_100" in df2.columns:
         df2["field_position"] = pd.cut(
             df2["yardline_100"], bins=[0, 20, 40, 60, 80, 100],
-            labels=["redzone", "offensive", "midfield", "defensive", "backed_up"]
+            labels=["redzone", "offensive", "midfield", "defensive", "backed_up"],
+            include_lowest=True
         )
     else:
         df2["field_position"] = "midfield"
